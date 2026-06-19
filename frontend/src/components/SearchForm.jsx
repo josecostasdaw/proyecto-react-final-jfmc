@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getMunicipios } from '../services/api';
+import Loading from './Loading';
+import ErrorMessage from './ErrorMessage';
 
 function SearchForm({ onSearch, disabled }) {
   const [municipios, setMunicipios] = useState([]);
@@ -7,6 +9,7 @@ function SearchForm({ onSearch, disabled }) {
   const [codigoSeleccionado, setCodigoSeleccionado] = useState('');
   const [cargandoLista, setCargandoLista] = useState(true);
   const [errorLista, setErrorLista] = useState('');
+  const [errorValidacion, setErrorValidacion] = useState('');
 
   useEffect(() => {
     async function cargarMunicipios() {
@@ -14,8 +17,8 @@ function SearchForm({ onSearch, disabled }) {
         const lista = await getMunicipios();
         const ordenados = [...lista].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
         setMunicipios(ordenados);
-      } catch (error) {
-        setErrorLista('No se pudo cargar la lista de municipios');
+      } catch {
+        setErrorLista('No se pudo cargar la lista de municipios. Comprueba que el backend este activo.');
       } finally {
         setCargandoLista(false);
       }
@@ -30,21 +33,26 @@ function SearchForm({ onSearch, disabled }) {
 
   function handleSubmit(event) {
     event.preventDefault();
-    if (codigoSeleccionado) {
-      onSearch(codigoSeleccionado);
+    setErrorValidacion('');
+
+    if (!codigoSeleccionado) {
+      setErrorValidacion('Debes seleccionar un municipio antes de buscar');
+      return;
     }
+
+    onSearch(codigoSeleccionado);
   }
 
   if (cargandoLista) {
-    return <p className="info-message">Cargando municipios...</p>;
+    return <Loading mensaje="Cargando lista de municipios..." />;
   }
 
   if (errorLista) {
-    return <p className="error-message">{errorLista}</p>;
+    return <ErrorMessage mensaje={errorLista} />;
   }
 
   return (
-    <form className="search-form" onSubmit={handleSubmit}>
+    <form className="search-form" onSubmit={handleSubmit} noValidate>
       <div className="form-group">
         <label htmlFor="filtro">Buscar municipio</label>
         <input
@@ -53,6 +61,7 @@ function SearchForm({ onSearch, disabled }) {
           placeholder="Escribe el nombre del municipio"
           value={filtro}
           onChange={(event) => setFiltro(event.target.value)}
+          disabled={disabled}
         />
       </div>
 
@@ -61,7 +70,12 @@ function SearchForm({ onSearch, disabled }) {
         <select
           id="municipio"
           value={codigoSeleccionado}
-          onChange={(event) => setCodigoSeleccionado(event.target.value)}
+          onChange={(event) => {
+            setCodigoSeleccionado(event.target.value);
+            setErrorValidacion('');
+          }}
+          disabled={disabled}
+          required
         >
           <option value="">-- Elige un municipio --</option>
           {municipiosFiltrados.map((municipio) => (
@@ -70,7 +84,12 @@ function SearchForm({ onSearch, disabled }) {
             </option>
           ))}
         </select>
+        {filtro && municipiosFiltrados.length === 0 && (
+          <p className="form-hint">No hay municipios que coincidan con tu busqueda</p>
+        )}
       </div>
+
+      {errorValidacion && <p className="form-error">{errorValidacion}</p>}
 
       <button type="submit" disabled={disabled || !codigoSeleccionado}>
         Consultar tiempo

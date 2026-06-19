@@ -1,36 +1,37 @@
 .app {
   max-width: 960px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 1rem;
 }
 
 .header {
   text-align: center;
-  margin-bottom: 2rem;
-  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  padding: 1.5rem 1rem;
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: white;
   border-radius: 12px;
 }
 
 .header h1 {
-  font-size: 2rem;
+  font-size: 1.75rem;
   margin-bottom: 0.25rem;
 }
 
 .header-subtitle {
   opacity: 0.9;
+  font-size: 0.95rem;
 }
 
 .main-content {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .search-form {
   background: white;
-  padding: 1.5rem;
+  padding: 1.25rem;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   display: flex;
@@ -55,6 +56,24 @@
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 1rem;
+  width: 100%;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.form-hint {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.form-error {
+  color: #dc2626;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .search-form button {
@@ -66,6 +85,7 @@
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
+  width: 100%;
 }
 
 .search-form button:disabled {
@@ -73,41 +93,77 @@
   cursor: not-allowed;
 }
 
-.info-message {
+.feedback {
   text-align: center;
-  padding: 1rem;
-  color: #2563eb;
-  font-weight: 500;
+  padding: 1.25rem;
+  border-radius: 8px;
 }
 
-.error-message {
-  text-align: center;
-  padding: 1rem;
+.feedback--loading {
+  color: #2563eb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.feedback--error {
   background-color: #fef2f2;
   color: #dc2626;
-  border-radius: 8px;
   border: 1px solid #fecaca;
+}
+
+.feedback--empty {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #dbeafe;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .weather-results {
   background: white;
-  padding: 1.5rem;
+  padding: 1.25rem;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .weather-header {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   text-align: center;
+}
+
+.weather-header h2 {
+  font-size: 1.5rem;
 }
 
 .weather-provincia {
   color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.weather-elaborado {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-top: 0.25rem;
 }
 
 .weather-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1rem;
 }
 
@@ -122,9 +178,64 @@
   margin-bottom: 0.75rem;
   color: #2563eb;
   font-size: 1rem;
+  text-transform: capitalize;
 }
 
-.weather-card p {
+.weather-details {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.weather-details li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
   font-size: 0.9rem;
-  margin-bottom: 0.25rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.weather-details li:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.detail-value {
+  text-align: right;
+  font-weight: 600;
+}
+
+@media (min-width: 600px) {
+  .app {
+    padding: 1.5rem;
+  }
+
+  .header h1 {
+    font-size: 2rem;
+  }
+
+  .search-form {
+    padding: 1.5rem;
+  }
+
+  .search-form button {
+    width: auto;
+    align-self: flex-start;
+  }
+
+  .weather-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .weather-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
