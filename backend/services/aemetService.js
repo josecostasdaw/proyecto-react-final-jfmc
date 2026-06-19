@@ -4,6 +4,10 @@ const PERIODOS_PREFERIDOS = ['12', '12-24', '00-24', '06-12', '00-12', '18-24', 
 
 let municipiosCache = null;
 
+function limpiarCacheMunicipios() {
+  municipiosCache = null;
+}
+
 const ESTADOS_CIELO = {
   11: 'Despejado',
   12: 'Poco nuboso',
@@ -40,6 +44,36 @@ function getApiKey() {
     throw new Error('La clave de AEMET no esta configurada. Revisa el archivo .env');
   }
   return apiKey;
+}
+
+function normalizarCodigoMunicipio(municipio) {
+  const id = String(municipio.id || '');
+
+  if (id.startsWith('id')) {
+    return id.slice(2);
+  }
+
+  if (municipio.id_old) {
+    return String(municipio.id_old);
+  }
+
+  return id;
+}
+
+function normalizarCodigoEntrada(codigo) {
+  const limpio = String(codigo || '').trim();
+
+  if (limpio.startsWith('id')) {
+    return limpio.slice(2);
+  }
+
+  return limpio;
+}
+
+async function parseAemetDatos(response) {
+  const buffer = await response.arrayBuffer();
+  const texto = new TextDecoder('iso-8859-1').decode(buffer);
+  return JSON.parse(texto);
 }
 
 function seleccionarPeriodo(items) {
@@ -83,7 +117,7 @@ async function fetchAemet(endpoint) {
     throw new Error(`Error al obtener datos de AEMET: ${datosResponse.status}`);
   }
 
-  const datos = await datosResponse.json();
+  const datos = await parseAemetDatos(datosResponse);
 
   if (!datos || (Array.isArray(datos) && datos.length === 0)) {
     throw new Error('No hay datos disponibles para esta consulta');
@@ -100,7 +134,7 @@ async function getMunicipios() {
   const datos = await fetchAemet('/maestro/municipios');
 
   municipiosCache = datos.map((municipio) => ({
-    codigo: municipio.id,
+    codigo: normalizarCodigoMunicipio(municipio),
     nombre: municipio.nombre,
     latitud: municipio.latitud_dec,
     longitud: municipio.longitud_dec
@@ -222,5 +256,8 @@ module.exports = {
   getPrediccionMunicipio,
   seleccionarPeriodo,
   extraerDiasPrediccion,
-  transformarPrediccion
+  transformarPrediccion,
+  normalizarCodigoMunicipio,
+  normalizarCodigoEntrada,
+  limpiarCacheMunicipios
 };
