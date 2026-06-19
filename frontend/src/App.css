@@ -5,12 +5,18 @@
 }
 
 .header {
-  text-align: center;
   margin-bottom: 1.5rem;
   padding: 1.5rem 1rem;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: white;
+  background: linear-gradient(135deg, var(--header-gradient-start), var(--header-gradient-end));
+  color: var(--header-text);
   border-radius: 12px;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
 }
 
 .header h1 {
@@ -23,6 +29,22 @@
   font-size: 0.95rem;
 }
 
+.theme-toggle {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  font-size: 1.25rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 .main-content {
   display: flex;
   flex-direction: column;
@@ -30,10 +52,10 @@
 }
 
 .search-form {
-  background: white;
+  background: var(--card-bg);
   padding: 1.25rem;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -53,32 +75,34 @@
 .form-group input,
 .form-group select {
   padding: 0.75rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   font-size: 1rem;
   width: 100%;
+  background: var(--card-bg);
+  color: var(--text-color);
 }
 
 .form-group input:focus,
 .form-group select:focus {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--primary-color);
   outline-offset: 1px;
 }
 
 .form-hint {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--muted-text);
 }
 
 .form-error {
-  color: #dc2626;
+  color: var(--error-text);
   font-size: 0.9rem;
   font-weight: 500;
 }
 
 .search-form button {
   padding: 0.75rem 1.5rem;
-  background-color: #2563eb;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   border-radius: 8px;
@@ -89,7 +113,7 @@
 }
 
 .search-form button:disabled {
-  background-color: #94a3b8;
+  background-color: var(--primary-disabled);
   cursor: not-allowed;
 }
 
@@ -100,7 +124,7 @@
 }
 
 .feedback--loading {
-  color: #2563eb;
+  color: var(--primary-color);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -108,22 +132,22 @@
 }
 
 .feedback--error {
-  background-color: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
+  background-color: var(--error-bg);
+  color: var(--error-text);
+  border: 1px solid var(--error-border);
 }
 
 .feedback--empty {
-  background-color: #fffbeb;
-  color: #b45309;
-  border: 1px solid #fde68a;
+  background-color: var(--empty-bg);
+  color: var(--empty-text);
+  border: 1px solid var(--empty-border);
 }
 
 .spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid #dbeafe;
-  border-top-color: #2563eb;
+  border: 3px solid var(--input-border);
+  border-top-color: var(--primary-color);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -135,10 +159,10 @@
 }
 
 .weather-results {
-  background: white;
+  background: var(--card-bg);
   padding: 1.25rem;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow);
 }
 
 .weather-header {
@@ -146,18 +170,24 @@
   text-align: center;
 }
 
+.weather-icon-large {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
 .weather-header h2 {
   font-size: 1.5rem;
 }
 
 .weather-provincia {
-  color: #64748b;
+  color: var(--muted-text);
   margin-top: 0.25rem;
 }
 
 .weather-elaborado {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--subtle-text);
   margin-top: 0.25rem;
 }
 
@@ -169,14 +199,24 @@
 
 .weather-card {
   padding: 1rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--card-border);
   border-radius: 8px;
-  background-color: #f8fafc;
+  background-color: var(--card-inner-bg);
+}
+
+.weather-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.weather-icon {
+  font-size: 1.75rem;
 }
 
 .weather-card h3 {
-  margin-bottom: 0.75rem;
-  color: #2563eb;
+  color: var(--primary-color);
   font-size: 1rem;
   text-transform: capitalize;
 }
@@ -194,7 +234,7 @@
   gap: 1rem;
   font-size: 0.9rem;
   padding-bottom: 0.35rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--card-border);
 }
 
 .weather-details li:last-child {
@@ -202,7 +242,7 @@
 }
 
 .detail-label {
-  color: #64748b;
+  color: var(--muted-text);
   font-weight: 500;
 }
 

@@ -5,10 +5,12 @@ import WeatherCard from './components/WeatherCard';
 import Loading from './components/Loading';
 import ErrorMessage from './components/ErrorMessage';
 import NoResults from './components/NoResults';
+import useTheme from './hooks/useTheme';
 import { getTiempoMunicipio } from './services/api';
 import './App.css';
 
 function App() {
+  const { esOscuro, toggleTema } = useTheme();
   const [datosTiempo, setDatosTiempo] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
@@ -38,7 +40,7 @@ function App() {
 
   return (
     <div className="app">
-      <Header />
+      <Header esOscuro={esOscuro} onToggleTema={toggleTema} />
 
       <main className="main-content">
         <SearchForm onSearch={handleSearch} disabled={cargando} />
