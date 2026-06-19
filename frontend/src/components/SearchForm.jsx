@@ -84,23 +84,27 @@ function SearchForm({ onSearch, disabled }) {
   }
 
   function handleKeyDown(event) {
-    if (!mostrarSugerencias || sugerencias.length === 0) {
-      if (event.key === 'Escape') {
-        setMostrarSugerencias(false);
-      }
+    if (event.key === 'ArrowDown' && sugerencias.length > 0) {
+      event.preventDefault();
+      setMostrarSugerencias(true);
+      setIndiceActivo((prev) => (prev < sugerencias.length - 1 ? prev + 1 : 0));
       return;
     }
 
-    if (event.key === 'ArrowDown') {
+    if (event.key === 'ArrowUp' && sugerencias.length > 0) {
       event.preventDefault();
-      setIndiceActivo((prev) => (prev < sugerencias.length - 1 ? prev + 1 : 0));
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
+      setMostrarSugerencias(true);
       setIndiceActivo((prev) => (prev > 0 ? prev - 1 : sugerencias.length - 1));
-    } else if (event.key === 'Enter' && indiceActivo >= 0) {
+      return;
+    }
+
+    if (event.key === 'Enter' && indiceActivo >= 0 && sugerencias.length > 0) {
       event.preventDefault();
       seleccionarMunicipio(sugerencias[indiceActivo]);
-    } else if (event.key === 'Escape') {
+      return;
+    }
+
+    if (event.key === 'Escape') {
       setMostrarSugerencias(false);
       setIndiceActivo(-1);
     }
@@ -127,15 +131,15 @@ function SearchForm({ onSearch, disabled }) {
     }
 
     if (textoTrim.length === 0) {
-      return <p className="combobox-hint">Escribe al menos 2 letras para buscar un municipio</p>;
+      return <p className="input-group-hint">Escribe al menos 2 letras para buscar un municipio</p>;
     }
 
     if (textoTrim.length < MIN_CARACTERES) {
-      return <p className="combobox-hint">Escribe al menos 2 letras para ver sugerencias</p>;
+      return <p className="input-group-hint">Escribe al menos 2 letras para ver sugerencias</p>;
     }
 
     if (listaVisible && sugerencias.length === 0) {
-      return <p className="combobox-hint combobox-hint--empty">No hay municipios que coincidan con tu busqueda</p>;
+      return <p className="input-group-hint input-group-hint--empty">No hay municipios que coincidan con tu busqueda</p>;
     }
 
     return null;
@@ -155,47 +159,59 @@ function SearchForm({ onSearch, disabled }) {
         <label htmlFor={inputId}>Buscar municipio</label>
 
         <div
-          className="combobox"
+          className="input-group combobox"
           role="combobox"
           aria-expanded={listaVisible && sugerencias.length > 0}
           aria-haspopup="listbox"
           aria-owns={listboxId}
         >
-          <div className="combobox-input-wrapper">
-            <span className="combobox-icon" aria-hidden="true">&#128269;</span>
-            <input
-              ref={inputRef}
-              id={inputId}
-              type="text"
-              className="combobox-input"
-              placeholder="Ej: Cartagena, Madrid, Valencia..."
-              value={textoBusqueda}
-              onChange={handleInputChange}
-              onFocus={handleInputFocus}
-              onKeyDown={handleKeyDown}
-              onBlur={() => {
-                setTimeout(() => setMostrarSugerencias(false), 150);
-              }}
+          <span className="input-group-addon input-group-addon--start" aria-hidden="true">
+            &#128269;
+          </span>
+
+          <input
+            ref={inputRef}
+            id={inputId}
+            type="text"
+            className="input-group-field"
+            placeholder="Ej: Cartagena, Madrid, Valencia..."
+            value={textoBusqueda}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            onKeyDown={handleKeyDown}
+            onBlur={() => {
+              setTimeout(() => setMostrarSugerencias(false), 150);
+            }}
+            disabled={disabled}
+            autoComplete="off"
+            aria-autocomplete="list"
+            aria-controls={listboxId}
+            aria-activedescendant={
+              indiceActivo >= 0 ? `${listboxId}-option-${indiceActivo}` : undefined
+            }
+          />
+
+          {textoBusqueda && (
+            <button
+              type="button"
+              className="input-group-addon input-group-clear"
+              onClick={limpiarSeleccion}
               disabled={disabled}
-              autoComplete="off"
-              aria-autocomplete="list"
-              aria-controls={listboxId}
-              aria-activedescendant={
-                indiceActivo >= 0 ? `${listboxId}-option-${indiceActivo}` : undefined
-              }
-            />
-            {textoBusqueda && (
-              <button
-                type="button"
-                className="combobox-clear"
-                onClick={limpiarSeleccion}
-                disabled={disabled}
-                aria-label="Limpiar busqueda"
-              >
-                &#10005;
-              </button>
-            )}
-          </div>
+              aria-label="Limpiar busqueda"
+            >
+              &#10005;
+            </button>
+          )}
+
+          <button
+            type="submit"
+            className="input-group-btn"
+            disabled={disabled || !municipioSeleccionado}
+            aria-label="Consultar tiempo"
+          >
+            <span className="input-group-btn-text input-group-btn-text--full">Consultar tiempo</span>
+            <span className="input-group-btn-text input-group-btn-text--short">Buscar</span>
+          </button>
 
           {listaVisible && sugerencias.length > 0 && (
             <ul id={listboxId} className="combobox-suggestions" role="listbox">
@@ -230,10 +246,6 @@ function SearchForm({ onSearch, disabled }) {
       )}
 
       {errorValidacion && <p className="form-error">{errorValidacion}</p>}
-
-      <button type="submit" disabled={disabled || !municipioSeleccionado}>
-        Consultar tiempo
-      </button>
     </form>
   );
 }
