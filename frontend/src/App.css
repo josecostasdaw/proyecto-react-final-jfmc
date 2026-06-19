@@ -97,7 +97,7 @@
   align-items: stretch;
   width: 100%;
   border: 1px solid var(--input-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--card-bg);
   overflow: visible;
   transition: outline 0.15s, border-color 0.15s;
@@ -211,7 +211,7 @@
   padding: 0.25rem 0;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: var(--shadow);
   max-height: 240px;
   overflow-y: auto;
@@ -241,7 +241,7 @@
   padding: 0.75rem 1rem;
   background: var(--card-inner-bg);
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 0.95rem;
 }
 
