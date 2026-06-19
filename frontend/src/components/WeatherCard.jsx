@@ -1,8 +1,13 @@
 import { obtenerIconoTiempo } from '../utils/weatherIcons';
 
 function formatearFecha(fecha) {
-  const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
-  return new Date(fecha).toLocaleDateString('es-ES', opciones);
+  const [anio, mes, dia] = fecha.split('T')[0].split('-');
+  const fechaLocal = new Date(Number(anio), Number(mes) - 1, Number(dia));
+  return fechaLocal.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  });
 }
 
 function WeatherCard({ datos }) {

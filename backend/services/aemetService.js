@@ -1,5 +1,7 @@
 const AEMET_BASE_URL = 'https://opendata.aemet.es/opendata/api';
 
+const PERIODOS_PREFERIDOS = ['12', '12-24', '00-24', '06-12', '00-12', '18-24', '00-06'];
+
 let municipiosCache = null;
 
 const ESTADOS_CIELO = {
@@ -38,6 +40,21 @@ function getApiKey() {
     throw new Error('La clave de AEMET no esta configurada. Revisa el archivo .env');
   }
   return apiKey;
+}
+
+function seleccionarPeriodo(items) {
+  if (!items || items.length === 0) {
+    return null;
+  }
+
+  for (const periodo of PERIODOS_PREFERIDOS) {
+    const encontrado = items.find((item) => String(item.periodo) === periodo);
+    if (encontrado) {
+      return encontrado;
+    }
+  }
+
+  return items[Math.floor(items.length / 2)] || items[0];
 }
 
 async function fetchAemet(endpoint) {
@@ -97,17 +114,34 @@ function obtenerEstadoCielo(dia) {
     return 'Sin datos';
   }
 
-  const periodo = dia.estadoCielo.find((e) => e.periodo === '12') || dia.estadoCielo[0];
+  const periodo = seleccionarPeriodo(dia.estadoCielo);
   const codigo = Number(periodo.value);
   return periodo.descripcion || ESTADOS_CIELO[codigo] || `Estado ${periodo.value}`;
 }
 
 function obtenerTemperatura(dia, campo) {
-  if (!dia.temperatura) {
+  const temperatura = dia.temperatura;
+
+  if (!temperatura) {
     return null;
   }
-  const valor = dia.temperatura[campo];
-  return valor !== undefined ? Number(valor) : null;
+
+  if (!Array.isArray(temperatura)) {
+    const valor = temperatura[campo];
+    return valor !== undefined && valor !== '' ? Number(valor) : null;
+  }
+
+  const porId = temperatura.find((item) => item.id === campo);
+  if (porId && porId.value !== undefined && porId.value !== '') {
+    return Number(porId.value);
+  }
+
+  const porCampo = temperatura.find((item) => item[campo] !== undefined && item[campo] !== '');
+  if (porCampo) {
+    return Number(porCampo[campo]);
+  }
+
+  return null;
 }
 
 function obtenerPrecipitacion(dia) {
@@ -115,8 +149,8 @@ function obtenerPrecipitacion(dia) {
     return null;
   }
 
-  const periodo = dia.probPrecipitacion.find((p) => p.periodo === '12') || dia.probPrecipitacion[0];
-  return periodo.value !== undefined ? Number(periodo.value) : null;
+  const periodo = seleccionarPeriodo(dia.probPrecipitacion);
+  return periodo && periodo.value !== undefined ? Number(periodo.value) : null;
 }
 
 function obtenerViento(dia) {
@@ -124,21 +158,38 @@ function obtenerViento(dia) {
     return { direccion: 'Sin datos', velocidad: null };
   }
 
-  const periodo = dia.viento.find((v) => v.periodo === '12') || dia.viento[0];
+  const periodo = seleccionarPeriodo(dia.viento);
   return {
     direccion: periodo.direccion || 'Sin datos',
     velocidad: periodo.velocidad !== undefined ? Number(periodo.velocidad) : null
   };
 }
 
+function extraerDiasPrediccion(municipio) {
+  if (!municipio || !municipio.prediccion) {
+    return null;
+  }
+
+  const prediccion = Array.isArray(municipio.prediccion)
+    ? municipio.prediccion[0]
+    : municipio.prediccion;
+
+  if (!prediccion || !prediccion.dia) {
+    return null;
+  }
+
+  return prediccion.dia;
+}
+
 function transformarPrediccion(datos) {
   const municipio = Array.isArray(datos) ? datos[0] : datos;
+  const diasRaw = extraerDiasPrediccion(municipio);
 
-  if (!municipio || !municipio.prediccion || !municipio.prediccion.dia) {
+  if (!diasRaw || diasRaw.length === 0) {
     throw new Error('No se encontraron datos de prediccion para este municipio');
   }
 
-  const dias = municipio.prediccion.dia.map((dia) => {
+  const dias = diasRaw.map((dia) => {
     const viento = obtenerViento(dia);
 
     return {
@@ -168,5 +219,8 @@ async function getPrediccionMunicipio(codigo) {
 module.exports = {
   fetchAemet,
   getMunicipios,
-  getPrediccionMunicipio
+  getPrediccionMunicipio,
+  seleccionarPeriodo,
+  extraerDiasPrediccion,
+  transformarPrediccion
 };

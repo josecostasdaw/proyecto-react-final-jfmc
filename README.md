@@ -39,6 +39,7 @@ cd proyecto-react-final-jfmc
 ### 2. Instalar dependencias
 
 ```bash
+npm install
 npm run install:all
 ```
 
@@ -59,7 +60,7 @@ cp .env.example .env
 Editar `backend/.env` y anadir tu clave AEMET:
 
 ```env
-PORT=3000
+PORT=3040
 AEMET_API_KEY=tu_clave_real_aqui
 ```
 
@@ -67,7 +68,13 @@ AEMET_API_KEY=tu_clave_real_aqui
 
 ## Ejecucion
 
-Abre dos terminales:
+**Opcion rapida (backend + frontend a la vez):**
+
+```bash
+npm run dev
+```
+
+**O en dos terminales separadas:**
 
 **Terminal 1 - Backend:**
 
@@ -75,7 +82,7 @@ Abre dos terminales:
 npm run dev:backend
 ```
 
-Servidor en `http://localhost:3000`
+Servidor en `http://localhost:3040`
 
 **Terminal 2 - Frontend:**
 
@@ -85,7 +92,21 @@ npm run dev:frontend
 
 Aplicacion en `http://localhost:5173`
 
-> Si el puerto 3000 esta ocupado, cambia `PORT` en `backend/.env` y actualiza el proxy en `frontend/vite.config.js`.
+> Si necesitas otro puerto, cambia `PORT` en `backend/.env` y actualiza el proxy en `frontend/vite.config.js`.
+
+## Produccion
+
+Para compilar el frontend:
+
+```bash
+npm run build:frontend
+```
+
+Si el frontend y el backend estan en dominios distintos, configura `frontend/.env`:
+
+```env
+VITE_API_BASE=http://localhost:3040/api
+```
 
 ## Endpoints del backend
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getMunicipios } from '../services/api';
 import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
@@ -27,9 +27,22 @@ function SearchForm({ onSearch, disabled }) {
     cargarMunicipios();
   }, []);
 
-  const municipiosFiltrados = municipios
-    .filter((municipio) => municipio.nombre.toLowerCase().includes(filtro.toLowerCase()))
-    .slice(0, 100);
+  const municipiosFiltrados = useMemo(() => {
+    const filtroNormalizado = filtro.toLowerCase().trim();
+    const coincidencias = municipios.filter((municipio) =>
+      municipio.nombre.toLowerCase().includes(filtroNormalizado)
+    );
+
+    const seleccionado = codigoSeleccionado
+      ? municipios.find((municipio) => municipio.codigo === codigoSeleccionado)
+      : null;
+
+    if (seleccionado && !coincidencias.some((m) => m.codigo === seleccionado.codigo)) {
+      return [seleccionado, ...coincidencias].slice(0, 100);
+    }
+
+    return coincidencias.slice(0, 100);
+  }, [municipios, filtro, codigoSeleccionado]);
 
   function handleSubmit(event) {
     event.preventDefault();

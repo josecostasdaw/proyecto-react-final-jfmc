@@ -86,7 +86,7 @@ Los objetivos de este proyecto, alineados con el enunciado de DWEC, son:
 | **Node.js** | Entorno de ejecucion de JavaScript en el servidor |
 | **Express** | Framework minimalista para crear la API REST |
 | **dotenv** | Gestion de variables de entorno (clave AEMET) |
-| **cors** | Permite que el frontend (puerto 5173) llame al backend (puerto 3000) |
+| **cors** | Permite que el frontend (puerto 5173) llame al backend (puerto 3040) |
 
 ### APIs y herramientas
 
@@ -261,7 +261,7 @@ Esta URL temporal expira en unos minutos, por eso hay que usarla inmediatamente.
 Archivo `backend/.env` (no se sube a Git):
 
 ```env
-PORT=3000
+PORT=3040
 AEMET_API_KEY=tu_clave_personal
 ```
 
@@ -300,7 +300,7 @@ Ambas funciones comprueban `response.ok` y `data.success` antes de devolver dato
 
 ### Proxy de desarrollo
 
-En `vite.config.js` se configura un proxy para que las peticiones a `/api` se redirijan al backend en `localhost:3000`. Esto evita problemas de CORS durante el desarrollo.
+En `vite.config.js` se configura un proxy para que las peticiones a `/api` se redirijan al backend en `localhost:3040`. Esto evita problemas de CORS durante el desarrollo.
 
 ---
 
@@ -467,9 +467,9 @@ El usuario **nunca** ve stack traces, codigos HTTP ni JSON crudo de errores.
 
 ### CORS en desarrollo
 
-**Problema:** El frontend (puerto 5173) y el backend (puerto 3000) son origenes diferentes.
+**Problema:** El frontend (puerto 5173) y el backend (puerto 3040) son origenes diferentes.
 
-**Solucion:** Proxy en Vite (`/api` -> `localhost:3000`) y middleware CORS en Express.
+**Solucion:** Proxy en Vite (`/api` -> `localhost:3040`) y middleware CORS en Express.
 
 ---
 

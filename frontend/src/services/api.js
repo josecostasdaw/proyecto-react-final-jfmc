@@ -1,7 +1,13 @@
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 async function handleResponse(response) {
-  const data = await response.json();
+  let data;
+
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error('El servidor no respondio correctamente. Comprueba que el backend este activo.');
+  }
 
   if (!response.ok || !data.success) {
     throw new Error(data.error || 'Error en la consulta');
