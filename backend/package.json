@@ -1,13 +1,13 @@
 {
-  "name": "backend-plantilla",
+  "name": "backend-aemet",
   "version": "1.0.0",
-  "description": "Plantilla de backend con Node.js y Express para consumir APIs externas",
+  "description": "Backend Express para la aplicacion meteorologica con AEMET",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "keywords": ["express", "api", "backend"],
+  "keywords": ["express", "api", "backend", "aemet"],
   "author": "",
   "license": "ISC",
   "dependencies": {

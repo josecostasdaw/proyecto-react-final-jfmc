@@ -3,6 +3,11 @@ node_modules/
 
 # Variables de entorno
 .env
+.env.local
+
+# Build
+dist/
+build/
 
 # Logs
 *.log
