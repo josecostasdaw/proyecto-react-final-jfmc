@@ -16,14 +16,35 @@ async function handleResponse(response) {
   return data;
 }
 
-export async function getMunicipios() {
-  const response = await fetch(`${API_BASE}/municipios`);
+export async function getProvincias() {
+  const response = await fetch(`${API_BASE}/provincias`);
+  const data = await handleResponse(response);
+  return data.data;
+}
+
+export async function getMunicipios(provincia) {
+  const url = provincia
+    ? `${API_BASE}/municipios?provincia=${encodeURIComponent(provincia)}`
+    : `${API_BASE}/municipios`;
+  const response = await fetch(url);
   const data = await handleResponse(response);
   return data.data;
 }
 
 export async function getTiempoMunicipio(codigo) {
   const response = await fetch(`${API_BASE}/tiempo/municipio/${codigo}`);
+  const data = await handleResponse(response);
+  return data.data;
+}
+
+export async function getTiempoMunicipioHoraria(codigo) {
+  const response = await fetch(`${API_BASE}/tiempo/municipio/${codigo}/horaria`);
+  const data = await handleResponse(response);
+  return data.data;
+}
+
+export async function getTiempoProvincia(codigo) {
+  const response = await fetch(`${API_BASE}/tiempo/provincia/${codigo}`);
   const data = await handleResponse(response);
   return data.data;
 }

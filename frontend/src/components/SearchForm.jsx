@@ -1,252 +1,94 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { getMunicipios } from '../services/api';
+import { useEffect, useState } from 'react';
+import { getProvincias } from '../services/api';
 import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
+import SearchModeTabs from './search/SearchModeTabs';
+import PrediccionToggle from './search/PrediccionToggle';
+import MunicipioSearch from './search/MunicipioSearch';
+import CodigoSearch from './search/CodigoSearch';
+import ProvinciaSearch from './search/ProvinciaSearch';
 
-const MIN_CARACTERES = 2;
-const MAX_SUGERENCIAS = 10;
-
-function SearchForm({ onSearch, disabled }) {
-  const [municipios, setMunicipios] = useState([]);
-  const [textoBusqueda, setTextoBusqueda] = useState('');
-  const [municipioSeleccionado, setMunicipioSeleccionado] = useState(null);
-  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
-  const [indiceActivo, setIndiceActivo] = useState(-1);
-  const [cargandoLista, setCargandoLista] = useState(true);
-  const [errorLista, setErrorLista] = useState('');
-  const [errorValidacion, setErrorValidacion] = useState('');
-
-  const inputRef = useRef(null);
-  const listboxId = useId();
-  const inputId = useId();
+function SearchForm({ onSearch, disabled, prediccion, onPrediccionChange }) {
+  const [modo, setModo] = useState('municipio');
+  const [provincias, setProvincias] = useState([]);
+  const [provinciaFiltro, setProvinciaFiltro] = useState('');
+  const [cargandoProvincias, setCargandoProvincias] = useState(true);
+  const [errorProvincias, setErrorProvincias] = useState('');
 
   useEffect(() => {
-    async function cargarMunicipios() {
+    async function cargarProvincias() {
       try {
-        const lista = await getMunicipios();
-        const ordenados = [...lista].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-        setMunicipios(ordenados);
+        const lista = await getProvincias();
+        setProvincias(lista);
       } catch {
-        setErrorLista('No se pudo cargar la lista de municipios. Comprueba que el backend este activo.');
+        setErrorProvincias('No se pudo cargar la lista de provincias.');
       } finally {
-        setCargandoLista(false);
+        setCargandoProvincias(false);
       }
     }
 
-    cargarMunicipios();
+    cargarProvincias();
   }, []);
 
-  const sugerencias = useMemo(() => {
-    const texto = textoBusqueda.trim().toLowerCase();
-
-    if (texto.length < MIN_CARACTERES) {
-      return [];
-    }
-
-    return municipios
-      .filter((municipio) => municipio.nombre.toLowerCase().includes(texto))
-      .slice(0, MAX_SUGERENCIAS);
-  }, [municipios, textoBusqueda]);
-
-  function seleccionarMunicipio(municipio) {
-    setMunicipioSeleccionado(municipio);
-    setTextoBusqueda(municipio.nombre);
-    setMostrarSugerencias(false);
-    setIndiceActivo(-1);
-    setErrorValidacion('');
+  function handleModoChange(nuevoModo) {
+    setModo(nuevoModo);
+    setProvinciaFiltro('');
   }
 
-  function limpiarSeleccion() {
-    setMunicipioSeleccionado(null);
-    setTextoBusqueda('');
-    setMostrarSugerencias(false);
-    setIndiceActivo(-1);
-    setErrorValidacion('');
-    inputRef.current?.focus();
+  function handleSearchRequest(params) {
+    onSearch({
+      ...params,
+      prediccion: params.modo === 'provincia' ? null : prediccion
+    });
   }
 
-  function handleInputChange(event) {
-    const valor = event.target.value;
-    setTextoBusqueda(valor);
-    setMostrarSugerencias(true);
-    setIndiceActivo(-1);
-    setErrorValidacion('');
-
-    if (municipioSeleccionado && valor !== municipioSeleccionado.nombre) {
-      setMunicipioSeleccionado(null);
-    }
+  if (cargandoProvincias) {
+    return <Loading mensaje="Cargando datos de busqueda..." />;
   }
 
-  function handleInputFocus() {
-    if (textoBusqueda.trim().length >= MIN_CARACTERES) {
-      setMostrarSugerencias(true);
-    }
+  if (errorProvincias) {
+    return <ErrorMessage mensaje={errorProvincias} />;
   }
 
-  function handleKeyDown(event) {
-    if (event.key === 'ArrowDown' && sugerencias.length > 0) {
-      event.preventDefault();
-      setMostrarSugerencias(true);
-      setIndiceActivo((prev) => (prev < sugerencias.length - 1 ? prev + 1 : 0));
-      return;
-    }
-
-    if (event.key === 'ArrowUp' && sugerencias.length > 0) {
-      event.preventDefault();
-      setMostrarSugerencias(true);
-      setIndiceActivo((prev) => (prev > 0 ? prev - 1 : sugerencias.length - 1));
-      return;
-    }
-
-    if (event.key === 'Enter' && indiceActivo >= 0 && sugerencias.length > 0) {
-      event.preventDefault();
-      seleccionarMunicipio(sugerencias[indiceActivo]);
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      setMostrarSugerencias(false);
-      setIndiceActivo(-1);
-    }
-  }
-
-  function handleSubmit(event) {
-    event.preventDefault();
-    setErrorValidacion('');
-
-    if (!municipioSeleccionado) {
-      setErrorValidacion('Selecciona un municipio de la lista antes de buscar');
-      return;
-    }
-
-    onSearch(municipioSeleccionado.codigo);
-  }
-
-  const textoTrim = textoBusqueda.trim();
-  const listaVisible = mostrarSugerencias && textoTrim.length >= MIN_CARACTERES;
-
-  function renderHint() {
-    if (municipioSeleccionado) {
-      return null;
-    }
-
-    if (textoTrim.length === 0) {
-      return <p className="input-group-hint">Escribe al menos 2 letras para buscar un municipio</p>;
-    }
-
-    if (textoTrim.length < MIN_CARACTERES) {
-      return <p className="input-group-hint">Escribe al menos 2 letras para ver sugerencias</p>;
-    }
-
-    if (listaVisible && sugerencias.length === 0) {
-      return <p className="input-group-hint input-group-hint--empty">No hay municipios que coincidan con tu busqueda</p>;
-    }
-
-    return null;
-  }
-
-  if (cargandoLista) {
-    return <Loading mensaje="Cargando lista de municipios..." />;
-  }
-
-  if (errorLista) {
-    return <ErrorMessage mensaje={errorLista} />;
-  }
+  const mostrarPrediccion = modo === 'municipio' || modo === 'codigo';
 
   return (
-    <form className="search-form" onSubmit={handleSubmit} noValidate>
-      <div className="form-group">
-        <label htmlFor={inputId}>Buscar municipio</label>
+    <section className="search-form">
+      <SearchModeTabs modo={modo} onChange={handleModoChange} disabled={disabled} />
 
-        <div
-          className="input-group combobox"
-          role="combobox"
-          aria-expanded={listaVisible && sugerencias.length > 0}
-          aria-haspopup="listbox"
-          aria-owns={listboxId}
-        >
-          <span className="input-group-addon input-group-addon--start" aria-hidden="true">
-            &#128269;
-          </span>
-
-          <input
-            ref={inputRef}
-            id={inputId}
-            type="text"
-            className="input-group-field"
-            placeholder="Ej: Cartagena, Madrid, Valencia..."
-            value={textoBusqueda}
-            onChange={handleInputChange}
-            onFocus={handleInputFocus}
-            onKeyDown={handleKeyDown}
-            onBlur={() => {
-              setTimeout(() => setMostrarSugerencias(false), 150);
-            }}
+      {mostrarPrediccion && (
+        <div className="form-group">
+          <span className="form-label">Tipo de prediccion</span>
+          <PrediccionToggle
+            prediccion={prediccion}
+            onChange={onPrediccionChange}
             disabled={disabled}
-            autoComplete="off"
-            aria-autocomplete="list"
-            aria-controls={listboxId}
-            aria-activedescendant={
-              indiceActivo >= 0 ? `${listboxId}-option-${indiceActivo}` : undefined
-            }
           />
-
-          {textoBusqueda && (
-            <button
-              type="button"
-              className="input-group-addon input-group-clear"
-              onClick={limpiarSeleccion}
-              disabled={disabled}
-              aria-label="Limpiar busqueda"
-            >
-              &#10005;
-            </button>
-          )}
-
-          <button
-            type="submit"
-            className="input-group-btn"
-            disabled={disabled || !municipioSeleccionado}
-            aria-label="Consultar tiempo"
-          >
-            <span className="input-group-btn-text input-group-btn-text--full">Consultar tiempo</span>
-            <span className="input-group-btn-text input-group-btn-text--short">Buscar</span>
-          </button>
-
-          {listaVisible && sugerencias.length > 0 && (
-            <ul id={listboxId} className="combobox-suggestions" role="listbox">
-              {sugerencias.map((municipio, index) => (
-                <li
-                  key={municipio.codigo}
-                  id={`${listboxId}-option-${index}`}
-                  role="option"
-                  aria-selected={indiceActivo === index}
-                  className={`combobox-suggestion${indiceActivo === index ? ' combobox-suggestion--active' : ''}`}
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    seleccionarMunicipio(municipio);
-                  }}
-                  onMouseEnter={() => setIndiceActivo(index)}
-                >
-                  {municipio.nombre}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {renderHint()}
-      </div>
-
-      {municipioSeleccionado && (
-        <div className="combobox-selected" role="status">
-          <span className="combobox-selected-label">Vas a consultar:</span>
-          <strong>{municipioSeleccionado.nombre}</strong>
         </div>
       )}
 
-      {errorValidacion && <p className="form-error">{errorValidacion}</p>}
-    </form>
+      {modo === 'municipio' && (
+        <MunicipioSearch
+          provincias={provincias}
+          provinciaFiltro={provinciaFiltro}
+          onProvinciaFiltroChange={setProvinciaFiltro}
+          onSearch={handleSearchRequest}
+          disabled={disabled}
+        />
+      )}
+
+      {modo === 'codigo' && (
+        <CodigoSearch onSearch={handleSearchRequest} disabled={disabled} />
+      )}
+
+      {modo === 'provincia' && (
+        <ProvinciaSearch
+          provincias={provincias}
+          onSearch={handleSearchRequest}
+          disabled={disabled}
+        />
+      )}
+    </section>
   );
 }
 

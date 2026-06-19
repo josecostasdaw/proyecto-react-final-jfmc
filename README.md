@@ -113,12 +113,19 @@ VITE_API_BASE=http://localhost:3040/api
 | Metodo | Ruta | Descripcion |
 |--------|------|-------------|
 | GET | `/` | Informacion de la API |
-| GET | `/api/municipios` | Lista de municipios |
+| GET | `/api/provincias` | Lista de provincias (codigo INE) |
+| GET | `/api/municipios` | Lista de municipios (`?provincia=30` opcional) |
 | GET | `/api/tiempo/municipio/:codigo` | Prediccion diaria (ej: 30016) |
+| GET | `/api/tiempo/municipio/:codigo/horaria` | Prediccion horaria por municipio |
+| GET | `/api/tiempo/provincia/:codigo` | Prediccion textual hoy y manana (ej: 30) |
 
 ## Funcionalidades
 
-- Busqueda meteorologica por municipio
+- Tres modos de busqueda: municipio (combobox), codigo INE y provincia
+- Prediccion diaria y horaria para municipios
+- Filtro de municipios por provincia
+- Historico de busquedas (localStorage, max. 10)
+- Graficas SVG de temperaturas (diaria y horaria)
 - Estados de carga, error y sin resultados
 - Diseno responsive (movil y escritorio)
 - Iconos meteorologicos segun estado del cielo

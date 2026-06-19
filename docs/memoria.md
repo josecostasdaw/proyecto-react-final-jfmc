@@ -189,10 +189,15 @@ proyecto-react-final-jfmc/
 
 Devuelve informacion basica de la API y lista de endpoints.
 
+#### `GET /api/provincias`
+
+- Devuelve el catalogo estatico de 52 provincias espanolas (codigo INE de 2 digitos + nombre)
+
 #### `GET /api/municipios`
 
 - Consulta el maestro de municipios de AEMET (`/maestro/municipios`)
 - Guarda el resultado en **cache en memoria** para no repetir la peticion
+- Filtro opcional: `?provincia=30` devuelve solo municipios de esa provincia
 - Devuelve un array con: codigo, nombre, latitud, longitud
 
 **Respuesta de ejemplo:**
@@ -212,6 +217,19 @@ Devuelve informacion basica de la API y lista de endpoints.
 - Valida que el codigo tenga 5 digitos
 - Consulta prediccion diaria: `/prediccion/especifica/municipio/diaria/{codigo}`
 - Transforma el JSON complejo de AEMET a un formato simple para el frontend
+- Incluye `tipo: "diaria"` en la respuesta
+
+#### `GET /api/tiempo/municipio/:codigo/horaria`
+
+- Valida codigo de 5 digitos
+- Consulta prediccion horaria: `/prediccion/especifica/municipio/horaria/{codigo}`
+- Devuelve datos por hora agrupados por dia (`tipo: "horaria"`)
+
+#### `GET /api/tiempo/provincia/:codigo`
+
+- Valida codigo de provincia de 2 digitos
+- Consulta prediccion textual oficial de AEMET (hoy y manana)
+- Endpoints: `/prediccion/provincia/hoy/{codigo}` y `/prediccion/provincia/manana/{codigo}`
 
 **Respuesta de ejemplo:**
 
@@ -241,9 +259,13 @@ Devuelve informacion basica de la API y lista de endpoints.
 
 Este archivo centraliza toda la comunicacion con AEMET:
 
-- **`fetchAemet(endpoint)`:** Funcion generica que implementa el patron de dos peticiones
-- **`getMunicipios()`:** Obtiene y cachea la lista de municipios
-- **`getPrediccionMunicipio(codigo)`:** Obtiene y transforma la prediccion
+- **`fetchAemet(endpoint)`:** Funcion generica que implementa el patron de dos peticiones (JSON)
+- **`fetchAemetTexto(endpoint)`:** Igual pero para respuestas en texto plano (provincias)
+- **`getProvincias()`:** Catalogo estatico INE
+- **`getMunicipios()` / `getMunicipiosPorProvincia(codigo)`:** Lista de municipios con cache
+- **`getPrediccionMunicipio(codigo)`:** Prediccion diaria transformada
+- **`getPrediccionMunicipioHoraria(codigo)`:** Prediccion horaria transformada
+- **`getPrediccionProvincia(codigo)`:** Texto hoy y manana por provincia
 
 ### Patron de dos peticiones de AEMET
 
@@ -273,27 +295,40 @@ AEMET_API_KEY=tu_clave_personal
 
 | Componente | Responsabilidad |
 |------------|-----------------|
-| `App.jsx` | Estado global: datos, carga, error. Orquesta la busqueda |
+| `App.jsx` | Estado global, orquesta busqueda, historico y resultados |
 | `Header.jsx` | Titulo de la app y boton de modo oscuro |
-| `SearchForm.jsx` | Carga municipios, filtro por nombre, selector y validacion |
-| `WeatherCard.jsx` | Muestra tarjetas con la prediccion de cada dia |
+| `SearchForm.jsx` | Orquesta modos de busqueda y tipo de prediccion |
+| `search/SearchModeTabs.jsx` | Pestanas: Municipio, Codigo, Provincia |
+| `search/MunicipioSearch.jsx` | Combobox con autocompletado y filtro por provincia |
+| `search/CodigoSearch.jsx` | Busqueda directa por codigo INE de 5 digitos |
+| `search/ProvinciaSearch.jsx` | Selector de provincia para prediccion textual |
+| `search/PrediccionToggle.jsx` | Alternar prediccion diaria u horaria |
+| `WeatherCard.jsx` | Tarjetas con prediccion diaria por dia |
+| `HourlyForecast.jsx` | Prediccion horaria por franjas |
+| `ProvinciaForecast.jsx` | Texto oficial AEMET hoy y manana |
+| `WeatherChart.jsx` | Graficas SVG de temperaturas |
+| `SearchHistory.jsx` | Historico de busquedas recientes |
 | `Loading.jsx` | Indicador visual de carga con spinner |
 | `ErrorMessage.jsx` | Mensaje amigable cuando algo falla |
 | `NoResults.jsx` | Mensaje cuando no hay datos |
 
 ### Hooks utilizados
 
-- **`useState`:** Gestionar estado (datos del tiempo, carga, errores, tema)
-- **`useEffect`:** Cargar lista de municipios al montar SearchForm
+- **`useState`:** Gestionar estado (datos del tiempo, carga, errores, tema, historico)
+- **`useEffect`:** Cargar provincias y municipios al montar componentes de busqueda
 - **`useTheme` (custom):** Gestionar modo oscuro y persistir en localStorage
+- **`useSearchHistory` (custom):** Historico de busquedas en localStorage (max. 10)
 
 ### Servicio API (`api.js`)
 
 Funciones que encapsulan las llamadas fetch:
 
 ```javascript
-getMunicipios()           // GET /api/municipios
-getTiempoMunicipio(codigo) // GET /api/tiempo/municipio/:codigo
+getProvincias()                    // GET /api/provincias
+getMunicipios(provincia?)          // GET /api/municipios[?provincia=30]
+getTiempoMunicipio(codigo)         // GET /api/tiempo/municipio/:codigo
+getTiempoMunicipioHoraria(codigo)  // GET /api/tiempo/municipio/:codigo/horaria
+getTiempoProvincia(codigo)         // GET /api/tiempo/provincia/:codigo
 ```
 
 Ambas funciones comprueban `response.ok` y `data.success` antes de devolver datos.
@@ -329,6 +364,14 @@ cp .env.example .env
 
 ### Arrancar la aplicacion
 
+**Opcion rapida (backend + frontend):**
+
+```bash
+npm run dev
+```
+
+**O en dos terminales:**
+
 **Terminal 1 - Backend:**
 
 ```bash
@@ -359,12 +402,14 @@ Los archivos compilados se generan en `frontend/dist/`.
 
 Vite es mas rapido en desarrollo (arranque instantaneo) y es el estandar actual para proyectos React nuevos. Create React App esta practicamente abandonado.
 
-### Por que busqueda por municipio
+### Por que varios modos de busqueda
 
-El enunciado permite elegir el tipo de busqueda. Se eligio municipio porque:
-- Es la consulta mas comun para usuarios ("que tiempo hace en mi ciudad")
-- La API de AEMET tiene endpoints especificos por codigo de municipio
-- Permite implementar un selector con filtro por nombre
+El enunciado valora positivamente varios tipos de consulta. Se implementaron tres modos:
+- **Municipio:** combobox con autocompletado (mas intuitivo para el usuario)
+- **Codigo:** entrada directa del codigo INE de 5 digitos
+- **Provincia:** prediccion textual oficial de AEMET (hoy y manana)
+
+Ademas, en modos municipio y codigo se puede alternar entre prediccion **diaria** y **horaria**.
 
 ### Por que cache en memoria para municipios
 
@@ -386,9 +431,24 @@ El JSON de AEMET es muy complejo y anidado. Simplificarlo en el backend hace que
 
 ## 10. Mejoras implementadas
 
-Ademas de los requisitos minimos, se han anadido dos mejoras opcionales del enunciado:
+Ademas de los requisitos minimos, se han implementado las **seis mejoras opcionales** del enunciado (seccion 9):
 
-### Iconos meteorologicos
+### 1. Varios tipos de busqueda
+
+Tres modos disponibles mediante pestanas:
+- Por **nombre de municipio** (combobox con autocompletado)
+- Por **codigo de municipio** (5 digitos INE)
+- Por **provincia** (prediccion textual AEMET)
+
+Dos tipos de prediccion para municipio/codigo: **diaria** y **horaria**.
+
+### 2. Selectores de provincias y municipios
+
+- Combobox de municipios con sugerencias al escribir
+- Filtro opcional por provincia en modo municipio
+- Selector dedicado de provincia en modo provincia
+
+### 3. Iconos meteorologicos
 
 El archivo `weatherIcons.js` mapea el estado del cielo a un emoji:
 
@@ -402,12 +462,28 @@ El archivo `weatherIcons.js` mapea el estado del cielo a un emoji:
 | Tormenta | ⛈️ |
 | Niebla / calima | 🌫️ |
 
-### Modo oscuro
+Los iconos se muestran en prediccion diaria y horaria.
+
+### 4. Historico de busquedas
+
+- Hook `useSearchHistory` guarda hasta 10 busquedas en `localStorage`
+- Componente `SearchHistory` permite re-ejecutar una consulta anterior
+- Boton para limpiar el historico
+
+### 5. Modo oscuro
 
 - Variables CSS en `:root` (tema claro) y `[data-theme="dark"]` (tema oscuro)
 - Boton toggle en la cabecera (🌙 / ☀️)
 - Preferencia guardada en `localStorage` con la clave `meteo-theme`
 - Hook personalizado `useTheme` para encapsular la logica
+- Compatible con graficas, historico y nuevos componentes
+
+### 6. Graficas y visualizacion de datos
+
+Componente `WeatherChart.jsx` con SVG puro (sin librerias externas):
+- **Diaria:** barras de temperatura maxima por dia
+- **Horaria:** linea de temperatura por hora del dia seleccionado
+- Responsive con scroll horizontal en pantallas pequenas
 
 ---
 
@@ -453,11 +529,23 @@ El usuario **nunca** ve stack traces, codigos HTTP ni JSON crudo de errores.
 
 **Solucion:** Crear funciones de transformacion en el backend (`obtenerEstadoCielo`, `obtenerTemperatura`, etc.) que extraen solo los datos necesarios y los devuelven en un formato plano.
 
-### Mas de 8000 municipios en el selector
+### Mas de 8000 municipios en el buscador
 
 **Problema:** Cargar todos los municipios en un `<select>` sin filtro seria lento e incomodo.
 
-**Solucion:** Campo de texto para filtrar por nombre + select que muestra solo los 100 primeros resultados del filtro.
+**Solucion:** Combobox con autocompletado (max. 10 sugerencias) y filtro opcional por provincia via `?provincia=XX`.
+
+### Prediccion provincial solo en texto plano
+
+**Problema:** AEMET no ofrece JSON estructurado para prediccion por provincia (los endpoints especificos devuelven 404).
+
+**Solucion:** Usar los endpoints oficiales de texto (`/prediccion/provincia/hoy` y `/manana`) y mostrarlos en `ProvinciaForecast`.
+
+### Parser de prediccion horaria
+
+**Problema:** La estructura horaria agrupa datos por periodo horario, no por dia como la diaria.
+
+**Solucion:** Funcion `transformarPrediccionHoraria()` que fusiona estado del cielo, temperatura, precipitacion y viento por cada hora.
 
 ### Los codigos de estado del cielo son numericos
 
@@ -488,16 +576,14 @@ El usuario **nunca** ve stack traces, codigos HTTP ni JSON crudo de errores.
 
 ### Que mejoraria con mas tiempo
 
-- Anadir busqueda por provincia como segundo tipo de consulta
-- Implementar prediccion por horas ademas de la diaria
-- Anadir historial de busquedas recientes con `localStorage`
-- Mejorar la accesibilidad (navegacion por teclado, lectores de pantalla)
+- Mejorar la accesibilidad (ARIA completo, lectores de pantalla en graficas)
 - Anadir tests automatizados (Jest para backend, React Testing Library para frontend)
 - Desplegar la aplicacion en un servidor (Render, Vercel, etc.)
+- Cache con TTL configurable y endpoint para limpiar cache en desarrollo
 
 ### Valoracion personal
 
-Este proyecto ha sido una oportunidad para integrar conocimientos de distintas areas (JavaScript, React, Node.js, APIs, Git) en una aplicacion funcional y completa. La mayor dificultad ha sido entender el formato de la API de AEMET, pero una vez comprendido el patron de dos peticiones, el resto del desarrollo ha sido mas directo.
+Este proyecto ha sido una oportunidad para integrar conocimientos de distintas areas (JavaScript, React, Node.js, APIs, Git) en una aplicacion funcional y completa. La mayor dificultad ha sido entender el formato de la API de AEMET y adaptar cada tipo de consulta (diaria, horaria y provincial) a una interfaz coherente para el usuario.
 
 ---
 

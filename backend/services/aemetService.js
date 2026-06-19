@@ -1,8 +1,68 @@
+const { PROVINCIAS, obtenerNombreProvincia } = require('../data/provincias');
+
 const AEMET_BASE_URL = 'https://opendata.aemet.es/opendata/api';
 
 const PERIODOS_PREFERIDOS = ['12', '12-24', '00-24', '06-12', '00-12', '18-24', '00-06'];
 
+const AEMET_MAX_REINTENTOS = 3;
+const AEMET_ESPERA_MS = 2500;
+
 let municipiosCache = null;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function crearErrorAemet(mensaje, statusCode = 500) {
+  const error = new Error(mensaje);
+  error.statusCode = statusCode;
+  return error;
+}
+
+async function ejecutarConReintentos(operacion) {
+  let ultimoError;
+
+  for (let intento = 0; intento < AEMET_MAX_REINTENTOS; intento++) {
+    try {
+      return await operacion();
+    } catch (error) {
+      ultimoError = error;
+      const esLimite = error.statusCode === 429 || String(error.message).includes('429');
+
+      if (!esLimite || intento === AEMET_MAX_REINTENTOS - 1) {
+        throw error;
+      }
+
+      await sleep(AEMET_ESPERA_MS * (intento + 1));
+    }
+  }
+
+  throw ultimoError;
+}
+
+function validarRespuestaAemet(response, metadata) {
+  if (response.status === 429) {
+    throw crearErrorAemet(
+      'AEMET ha limitado las peticiones. Espera unos segundos e intentalo de nuevo.',
+      429
+    );
+  }
+
+  if (!response.ok) {
+    throw crearErrorAemet(`Error al consultar AEMET: ${response.status}`);
+  }
+
+  if (metadata.estado === 429) {
+    throw crearErrorAemet(
+      'AEMET ha limitado las peticiones. Espera unos segundos e intentalo de nuevo.',
+      429
+    );
+  }
+
+  if (metadata.estado !== 200) {
+    throw crearErrorAemet(metadata.descripcion || 'Error en la respuesta de AEMET');
+  }
+}
 
 function limpiarCacheMunicipios() {
   municipiosCache = null;
@@ -70,9 +130,13 @@ function normalizarCodigoEntrada(codigo) {
   return limpio;
 }
 
-async function parseAemetDatos(response) {
+async function parseAemetTexto(response) {
   const buffer = await response.arrayBuffer();
-  const texto = new TextDecoder('iso-8859-1').decode(buffer);
+  return new TextDecoder('iso-8859-1').decode(buffer);
+}
+
+async function parseAemetDatos(response) {
+  const texto = await parseAemetTexto(response);
   return JSON.parse(texto);
 }
 
@@ -92,38 +156,84 @@ function seleccionarPeriodo(items) {
 }
 
 async function fetchAemet(endpoint) {
-  const apiKey = getApiKey();
-  const url = `${AEMET_BASE_URL}${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${apiKey}`;
+  return ejecutarConReintentos(async () => {
+    const apiKey = getApiKey();
+    const url = `${AEMET_BASE_URL}${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${apiKey}`;
 
-  const response = await fetch(url);
+    const response = await fetch(url);
+    const metadata = await response.json();
+    validarRespuestaAemet(response, metadata);
 
-  if (!response.ok) {
-    throw new Error(`Error al consultar AEMET: ${response.status}`);
-  }
+    if (!metadata.datos) {
+      throw crearErrorAemet('AEMET no devolvio datos para esta consulta');
+    }
 
-  const metadata = await response.json();
+    const datosResponse = await fetch(metadata.datos);
 
-  if (metadata.estado !== 200) {
-    throw new Error(metadata.descripcion || 'Error en la respuesta de AEMET');
-  }
+    if (datosResponse.status === 429) {
+      throw crearErrorAemet(
+        'AEMET ha limitado las peticiones. Espera unos segundos e intentalo de nuevo.',
+        429
+      );
+    }
 
-  if (!metadata.datos) {
-    throw new Error('AEMET no devolvio datos para esta consulta');
-  }
+    if (!datosResponse.ok) {
+      throw crearErrorAemet(`Error al obtener datos de AEMET: ${datosResponse.status}`);
+    }
 
-  const datosResponse = await fetch(metadata.datos);
+    const datos = await parseAemetDatos(datosResponse);
 
-  if (!datosResponse.ok) {
-    throw new Error(`Error al obtener datos de AEMET: ${datosResponse.status}`);
-  }
+    if (!datos || (Array.isArray(datos) && datos.length === 0)) {
+      throw crearErrorAemet('No hay datos disponibles para esta consulta');
+    }
 
-  const datos = await parseAemetDatos(datosResponse);
+    return datos;
+  });
+}
 
-  if (!datos || (Array.isArray(datos) && datos.length === 0)) {
-    throw new Error('No hay datos disponibles para esta consulta');
-  }
+async function fetchAemetTexto(endpoint) {
+  return ejecutarConReintentos(async () => {
+    const apiKey = getApiKey();
+    const url = `${AEMET_BASE_URL}${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${apiKey}`;
 
-  return datos;
+    const response = await fetch(url);
+    const metadata = await response.json();
+    validarRespuestaAemet(response, metadata);
+
+    if (!metadata.datos) {
+      throw crearErrorAemet('AEMET no devolvio datos para esta consulta');
+    }
+
+    const datosResponse = await fetch(metadata.datos);
+
+    if (datosResponse.status === 429) {
+      throw crearErrorAemet(
+        'AEMET ha limitado las peticiones. Espera unos segundos e intentalo de nuevo.',
+        429
+      );
+    }
+
+    if (!datosResponse.ok) {
+      throw crearErrorAemet(`Error al obtener datos de AEMET: ${datosResponse.status}`);
+    }
+
+    const texto = await parseAemetTexto(datosResponse);
+
+    if (!texto || texto.trim().length === 0) {
+      throw crearErrorAemet('No hay datos disponibles para esta consulta');
+    }
+
+    return texto;
+  });
+}
+
+function normalizarCodigoProvincia(codigo) {
+  const limpio = String(codigo || '').trim();
+  return limpio.padStart(2, '0');
+}
+
+function getProvincias() {
+  return PROVINCIAS;
 }
 
 async function getMunicipios() {
@@ -143,14 +253,28 @@ async function getMunicipios() {
   return municipiosCache;
 }
 
+async function getMunicipiosPorProvincia(codigoProvincia) {
+  const codigo = normalizarCodigoProvincia(codigoProvincia);
+  const municipios = await getMunicipios();
+  return municipios.filter((municipio) => municipio.codigo.startsWith(codigo));
+}
+
+function obtenerEstadoCieloItem(item) {
+  if (!item) {
+    return 'Sin datos';
+  }
+
+  const codigo = Number(item.value);
+  return item.descripcion || ESTADOS_CIELO[codigo] || `Estado ${item.value}`;
+}
+
 function obtenerEstadoCielo(dia) {
   if (!dia.estadoCielo || dia.estadoCielo.length === 0) {
     return 'Sin datos';
   }
 
   const periodo = seleccionarPeriodo(dia.estadoCielo);
-  const codigo = Number(periodo.value);
-  return periodo.descripcion || ESTADOS_CIELO[codigo] || `Estado ${periodo.value}`;
+  return obtenerEstadoCieloItem(periodo);
 }
 
 function obtenerTemperatura(dia, campo) {
@@ -238,6 +362,94 @@ function transformarPrediccion(datos) {
   });
 
   return {
+    tipo: 'diaria',
+    nombre: municipio.nombre,
+    provincia: municipio.provincia || '',
+    elaborado: municipio.elaborado || null,
+    dias
+  };
+}
+
+function obtenerValorPorPeriodo(items, periodo) {
+  if (!items || items.length === 0) {
+    return null;
+  }
+
+  const item = items.find((entry) => String(entry.periodo) === String(periodo));
+  if (!item) {
+    return null;
+  }
+
+  if (item.value !== undefined && item.value !== '') {
+    return Number(item.value);
+  }
+
+  return null;
+}
+
+function obtenerVientoPorPeriodo(items, periodo) {
+  if (!items || items.length === 0) {
+    return { direccion: 'Sin datos', velocidad: null };
+  }
+
+  const item = items.find((entry) => String(entry.periodo) === String(periodo));
+  if (!item) {
+    return { direccion: 'Sin datos', velocidad: null };
+  }
+
+  return {
+    direccion: item.direccion || 'Sin datos',
+    velocidad: item.velocidad !== undefined ? Number(item.velocidad) : null
+  };
+}
+
+function transformarPrediccionHoraria(datos) {
+  const municipio = Array.isArray(datos) ? datos[0] : datos;
+  const diasRaw = extraerDiasPrediccion(municipio);
+
+  if (!diasRaw || diasRaw.length === 0) {
+    throw new Error('No se encontraron datos de prediccion horaria para este municipio');
+  }
+
+  const dias = diasRaw.map((dia) => {
+    const periodos = new Set();
+
+    [dia.estadoCielo, dia.temperatura, dia.probPrecipitacion, dia.viento].forEach((lista) => {
+      if (Array.isArray(lista)) {
+        lista.forEach((item) => {
+          if (item.periodo !== undefined) {
+            periodos.add(String(item.periodo));
+          }
+        });
+      }
+    });
+
+    const horas = Array.from(periodos)
+      .sort((a, b) => Number(a) - Number(b))
+      .map((periodo) => {
+        const estadoItem = Array.isArray(dia.estadoCielo)
+          ? dia.estadoCielo.find((item) => String(item.periodo) === periodo)
+          : null;
+        const viento = obtenerVientoPorPeriodo(dia.viento, periodo);
+
+        return {
+          hora: periodo,
+          temperatura: obtenerValorPorPeriodo(dia.temperatura, periodo),
+          estadoCielo: obtenerEstadoCieloItem(estadoItem),
+          probPrecipitacion: obtenerValorPorPeriodo(dia.probPrecipitacion, periodo),
+          vientoDireccion: viento.direccion,
+          vientoVelocidad: viento.velocidad
+        };
+      });
+
+    return {
+      fecha: dia.fecha,
+      horas
+    };
+  });
+
+  return {
+    tipo: 'horaria',
     nombre: municipio.nombre,
     provincia: municipio.provincia || '',
     elaborado: municipio.elaborado || null,
@@ -250,14 +462,47 @@ async function getPrediccionMunicipio(codigo) {
   return transformarPrediccion(datos);
 }
 
+async function getPrediccionMunicipioHoraria(codigo) {
+  const datos = await fetchAemet(`/prediccion/especifica/municipio/horaria/${codigo}`);
+  return transformarPrediccionHoraria(datos);
+}
+
+async function getPrediccionProvincia(codigo) {
+  const codigoProvincia = normalizarCodigoProvincia(codigo);
+  const nombre = obtenerNombreProvincia(codigoProvincia);
+
+  if (!nombre) {
+    throw new Error('Codigo de provincia no valido');
+  }
+
+  const hoy = await fetchAemetTexto(`/prediccion/provincia/hoy/${codigoProvincia}`);
+  await sleep(500);
+  const manana = await fetchAemetTexto(`/prediccion/provincia/manana/${codigoProvincia}`);
+
+  return {
+    tipo: 'provincia-texto',
+    codigo: codigoProvincia,
+    nombre,
+    hoy,
+    manana
+  };
+}
+
 module.exports = {
   fetchAemet,
+  fetchAemetTexto,
+  getProvincias,
   getMunicipios,
+  getMunicipiosPorProvincia,
   getPrediccionMunicipio,
+  getPrediccionMunicipioHoraria,
+  getPrediccionProvincia,
   seleccionarPeriodo,
   extraerDiasPrediccion,
   transformarPrediccion,
+  transformarPrediccionHoraria,
   normalizarCodigoMunicipio,
   normalizarCodigoEntrada,
+  normalizarCodigoProvincia,
   limpiarCacheMunicipios
 };
