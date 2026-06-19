@@ -107,7 +107,8 @@ Aplicacion en `http://localhost:5173`
 
 - [Enunciado del proyecto](docs/enunciado.pdf)
 - [Especificaciones de la plantilla](docs/Especificaciones.pdf)
-- [Memoria del proyecto](docs/memoria.md)
+- [Memoria del proyecto (Markdown)](docs/memoria.md)
+- [Memoria del proyecto (PDF)](docs/memoria.pdf)
 
 ## Autor
 
