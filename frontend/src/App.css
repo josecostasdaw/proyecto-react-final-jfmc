@@ -72,7 +72,7 @@
   font-size: 0.9rem;
 }
 
-.form-group input {
+.form-group input:not(.input-group-field) {
   padding: 0.75rem;
   border: 1px solid var(--input-border);
   border-radius: 8px;
@@ -82,9 +82,16 @@
   color: var(--text-color);
 }
 
-.form-group input:focus {
+.form-group input:not(.input-group-field):focus {
   outline: 2px solid var(--primary-color);
   outline-offset: 1px;
+}
+
+.input-group .input-group-field {
+  border: none;
+  border-radius: 0;
+  outline: none;
+  width: auto;
 }
 
 .combobox {
@@ -117,6 +124,7 @@
   background: var(--card-inner-bg);
   color: var(--muted-text);
   border: none;
+  border-radius: 0;
   border-left: 1px solid var(--input-border);
   flex-shrink: 0;
 }
@@ -130,15 +138,21 @@
 .input-group-field {
   flex: 1;
   min-width: 0;
+  width: auto;
   border: none;
+  border-radius: 0;
   background: transparent;
   padding: 0.75rem 0.85rem;
   font-size: 1rem;
   color: var(--text-color);
+  box-shadow: none;
+  appearance: none;
 }
 
 .input-group-field:focus {
   outline: none;
+  border: none;
+  box-shadow: none;
 }
 
 .input-group-field::placeholder {
@@ -164,6 +178,7 @@
   background: var(--primary-color);
   color: white;
   border: none;
+  border-radius: 0;
   border-left: 1px solid var(--input-border);
   font-size: 0.95rem;
   font-weight: 600;
