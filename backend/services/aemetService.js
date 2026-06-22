@@ -155,6 +155,47 @@ function seleccionarPeriodo(items) {
   return items[Math.floor(items.length / 2)] || items[0];
 }
 
+function esPeriodoHorarioValido(periodo) {
+  const valor = String(periodo);
+
+  if (!/^\d{1,2}$/.test(valor)) {
+    return false;
+  }
+
+  const hora = Number(valor);
+  return hora >= 0 && hora <= 23;
+}
+
+function coincidenPeriodoHorario(a, b) {
+  return Number(a) === Number(b);
+}
+
+function obtenerPeriodosHorarios(dia) {
+  const periodos = new Set();
+
+  if (Array.isArray(dia.temperatura)) {
+    dia.temperatura.forEach((item) => {
+      if (item.periodo !== undefined && esPeriodoHorarioValido(item.periodo)) {
+        periodos.add(String(item.periodo));
+      }
+    });
+  }
+
+  if (periodos.size === 0) {
+    [dia.estadoCielo, dia.probPrecipitacion, dia.viento].forEach((lista) => {
+      if (Array.isArray(lista)) {
+        lista.forEach((item) => {
+          if (item.periodo !== undefined && esPeriodoHorarioValido(item.periodo)) {
+            periodos.add(String(item.periodo));
+          }
+        });
+      }
+    });
+  }
+
+  return Array.from(periodos).sort((a, b) => Number(a) - Number(b));
+}
+
 async function fetchAemet(endpoint) {
   return ejecutarConReintentos(async () => {
     const apiKey = getApiKey();
@@ -375,7 +416,7 @@ function obtenerValorPorPeriodo(items, periodo) {
     return null;
   }
 
-  const item = items.find((entry) => String(entry.periodo) === String(periodo));
+  const item = items.find((entry) => coincidenPeriodoHorario(entry.periodo, periodo));
   if (!item) {
     return null;
   }
@@ -392,7 +433,7 @@ function obtenerVientoPorPeriodo(items, periodo) {
     return { direccion: 'Sin datos', velocidad: null };
   }
 
-  const item = items.find((entry) => String(entry.periodo) === String(periodo));
+  const item = items.find((entry) => coincidenPeriodoHorario(entry.periodo, periodo));
   if (!item) {
     return { direccion: 'Sin datos', velocidad: null };
   }
@@ -412,35 +453,21 @@ function transformarPrediccionHoraria(datos) {
   }
 
   const dias = diasRaw.map((dia) => {
-    const periodos = new Set();
+    const horas = obtenerPeriodosHorarios(dia).map((periodo) => {
+      const estadoItem = Array.isArray(dia.estadoCielo)
+        ? dia.estadoCielo.find((item) => coincidenPeriodoHorario(item.periodo, periodo))
+        : null;
+      const viento = obtenerVientoPorPeriodo(dia.viento, periodo);
 
-    [dia.estadoCielo, dia.temperatura, dia.probPrecipitacion, dia.viento].forEach((lista) => {
-      if (Array.isArray(lista)) {
-        lista.forEach((item) => {
-          if (item.periodo !== undefined) {
-            periodos.add(String(item.periodo));
-          }
-        });
-      }
+      return {
+        hora: String(periodo).padStart(2, '0'),
+        temperatura: obtenerValorPorPeriodo(dia.temperatura, periodo),
+        estadoCielo: obtenerEstadoCieloItem(estadoItem),
+        probPrecipitacion: obtenerValorPorPeriodo(dia.probPrecipitacion, periodo),
+        vientoDireccion: viento.direccion,
+        vientoVelocidad: viento.velocidad
+      };
     });
-
-    const horas = Array.from(periodos)
-      .sort((a, b) => Number(a) - Number(b))
-      .map((periodo) => {
-        const estadoItem = Array.isArray(dia.estadoCielo)
-          ? dia.estadoCielo.find((item) => String(item.periodo) === periodo)
-          : null;
-        const viento = obtenerVientoPorPeriodo(dia.viento, periodo);
-
-        return {
-          hora: periodo,
-          temperatura: obtenerValorPorPeriodo(dia.temperatura, periodo),
-          estadoCielo: obtenerEstadoCieloItem(estadoItem),
-          probPrecipitacion: obtenerValorPorPeriodo(dia.probPrecipitacion, periodo),
-          vientoDireccion: viento.direccion,
-          vientoVelocidad: viento.velocidad
-        };
-      });
 
     return {
       fecha: dia.fecha,

@@ -53,12 +53,25 @@ function MunicipioSearch({ provincias, provinciaFiltro, onProvinciaFiltroChange,
       .slice(0, MAX_SUGERENCIAS);
   }, [municipios, textoBusqueda]);
 
+  function ejecutarBusqueda(municipio) {
+    if (disabled || !municipio) {
+      return;
+    }
+
+    onSearch({
+      modo: 'municipio',
+      codigo: municipio.codigo,
+      etiqueta: municipio.nombre
+    });
+  }
+
   function seleccionarMunicipio(municipio) {
     setMunicipioSeleccionado(municipio);
     setTextoBusqueda(municipio.nombre);
     setMostrarSugerencias(false);
     setIndiceActivo(-1);
     setErrorValidacion('');
+    ejecutarBusqueda(municipio);
   }
 
   function limpiarSeleccion() {
@@ -117,11 +130,7 @@ function MunicipioSearch({ provincias, provinciaFiltro, onProvinciaFiltroChange,
       return;
     }
 
-    onSearch({
-      modo: 'municipio',
-      codigo: municipioSeleccionado.codigo,
-      etiqueta: municipioSeleccionado.nombre
-    });
+    ejecutarBusqueda(municipioSeleccionado);
   }
 
   const textoTrim = textoBusqueda.trim();
@@ -241,13 +250,6 @@ function MunicipioSearch({ provincias, provinciaFiltro, onProvinciaFiltroChange,
           <p className="input-group-hint input-group-hint--empty">No hay municipios que coincidan</p>
         )}
       </div>
-
-      {municipioSeleccionado && (
-        <div className="combobox-selected" role="status">
-          <span className="combobox-selected-label">Vas a consultar:</span>
-          <strong>{municipioSeleccionado.nombre}</strong>
-        </div>
-      )}
 
       {errorValidacion && <p className="form-error">{errorValidacion}</p>}
     </form>
